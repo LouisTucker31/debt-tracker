@@ -1,5 +1,13 @@
-const CACHE_NAME = 'debt-tracker-v1';
-const ASSETS = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
+const CACHE_NAME = 'debt-tracker-v2';
+const ASSETS = [
+  './',
+  './index.html',
+  './styles.css',
+  './main.js',
+  './manifest.webmanifest',
+  './icon-192.png',
+  './icon-512.png'
+];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
