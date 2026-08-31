@@ -187,12 +187,13 @@
 
   function renderSummary(){
     var open = state.cards.filter(function(c){ return !c.closed; });
-    var totalBalance = open.reduce(function(s,c){ return s + c.balance; }, 0);
-    var totalMonthly = open.reduce(function(s,c){ return s + (c.monthlyPayment || 0); }, 0);
+    var included = open.filter(function(c){ return c.includeInTotal !== false; });
+    var totalBalance = included.reduce(function(s,c){ return s + c.balance; }, 0);
+    var totalMonthly = included.reduce(function(s,c){ return s + (c.monthlyPayment || 0); }, 0);
 
     var soonest = null;
     var anyUnpayable = false;
-    open.forEach(function(c){
+    included.forEach(function(c){
       var p = projectPayoff(c);
       if (p.neverPaysOff) anyUnpayable = true;
       if (p.payoffDate && (!soonest || p.payoffDate < soonest)) soonest = p.payoffDate;
@@ -286,6 +287,10 @@
       barHtml = '<div class="bar-track"><div class="bar-fill ' + cls + '" style="width:' + pct.toFixed(1) + '%"></div></div>';
     }
 
+    var excludedLine = c.includeInTotal === false
+      ? '<div class="tile-excluded">Not counted in your totals</div>'
+      : '';
+
     return (
       '<button class="tile" data-action="open-card" data-id="' + c.id + '">' +
         '<div class="tile-top">' +
@@ -296,6 +301,7 @@
         '<div class="tile-sub">' + (c.monthlyPayment ? fmtMoney(c.monthlyPayment) + '/mo' : 'No payment set') + '</div>' +
         barHtml +
         payoffLine +
+        excludedLine +
       '</button>'
     );
   }
@@ -479,6 +485,20 @@
       (c ? '' :
         '<div class="field"><label for="f-opendate">Opening date</label>' +
           '<input id="f-opendate" type="date" autocomplete="off" value="' + today + '" max="' + today + '"></div>'
+      ) +
+
+      (c ?
+        '<label class="switch-field" for="f-include-total">' +
+          '<span class="switch-field-text">' +
+            '<span class="switch-field-title">Include in total debt</span>' +
+            '<span class="switch-field-hint">Counts this card toward the totals at the top of your card list</span>' +
+          '</span>' +
+          '<span class="switch">' +
+            '<input type="checkbox" id="f-include-total" class="switch-input"' + (c.includeInTotal !== false ? ' checked' : '') + '>' +
+            '<span class="switch-track" aria-hidden="true"></span>' +
+          '</span>' +
+        '</label>'
+        : ''
       )
     );
   }
@@ -529,6 +549,7 @@
         lastAccrualDate: openDate,
         closed: false,
         closedDate: null,
+        includeInTotal: true,
         history: [{
           date: openDate, type:'open', amount:null,
           note:'Card added', balanceAfter: round2(principal)
@@ -543,16 +564,22 @@
       var c = getCard(state.activeCardId);
       if (!c) return;
 
+      var includeToggle = document.getElementById('f-include-total');
+      var includeInTotal = includeToggle ? includeToggle.checked : (c.includeInTotal !== false);
+      var wasIncluded = c.includeInTotal !== false;
+
       var changes = [];
       if (c.name !== name) changes.push('Name changed to "' + name + '"');
       if (c.apr !== apr) changes.push('APR changed to ' + apr.toFixed(2).replace(/\.00$/,'') + '% (was ' + c.apr.toFixed(2).replace(/\.00$/,'') + '%)');
       if (c.monthlyPayment !== payment) changes.push('Monthly payment changed to ' + fmtMoney(payment) + ' (was ' + fmtMoney(c.monthlyPayment) + ')');
       if ((c.creditLimit || null) !== (limit || null)) changes.push('Credit limit changed to ' + (limit ? fmtMoney(limit) : 'none'));
+      if (includeInTotal !== wasIncluded) changes.push(includeInTotal ? 'Included in total debt' : 'Excluded from total debt');
 
       c.name = name;
       c.apr = apr;
       c.monthlyPayment = payment;
       c.creditLimit = limit;
+      c.includeInTotal = includeInTotal;
 
       if (changes.length){
         c.history.push({ date: todayStr(), type:'adjustment', amount:null, note: changes.join('; '), balanceAfter: c.balance });
