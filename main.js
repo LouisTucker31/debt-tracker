@@ -59,7 +59,7 @@
   }
   function fmtDatePayoff(dateOrStr){
     var d = typeof dateOrStr === 'string' ? parseISO(dateOrStr) : dateOrStr;
-    return d.toLocaleDateString(LOCALE, { day:'numeric', month:'short', year:'numeric' });
+    return d.toLocaleDateString(LOCALE, { day:'numeric', month:'short', year:'2-digit' });
   }
 
   /* ============================================================
@@ -176,6 +176,7 @@
     renderSummary();
     renderInstallTip();
     renderCardsArea();
+    fitMainToViewport();
   }
 
   function renderSummary(){
@@ -252,10 +253,10 @@
     if (closed.length){
       html += '<details class="closed-section"><summary>Closed cards (' + closed.length + ')</summary>';
       closed.forEach(function(c){
-        html += '<div class="closed-row" onclick="DT.openCard(\'' + c.id + '\')">' +
+        html += '<button type="button" class="closed-row" data-action="open-card" data-id="' + c.id + '">' +
           '<span class="cname">' + escapeHtml(c.name) + '</span>' +
           '<span>Closed ' + fmtDateShort(c.closedDate) + '</span>' +
-        '</div>';
+        '</button>';
       });
       html += '</details>';
     }
@@ -280,7 +281,7 @@
     }
 
     return (
-      '<button class="tile" onclick="DT.openCard(\'' + c.id + '\')">' +
+      '<button class="tile" data-action="open-card" data-id="' + c.id + '">' +
         '<div class="tile-top">' +
           '<div class="tile-name">' + escapeHtml(c.name) + '</div>' +
           '<div class="apr-badge' + (aprHigh ? ' high' : '') + '">' + c.apr.toFixed(2).replace(/\.00$/,'') + '% APR</div>' +
@@ -340,20 +341,20 @@
 
     if (!c.closed){
       html += '<div class="action-row">';
-      html += '<button class="btn primary" onclick="DT.openTxForm(\'payment\')">Make a payment</button>';
-      html += '<button class="btn" onclick="DT.openTxForm(\'charge\')">Add a charge</button>';
+      html += '<button class="btn primary" data-action="tx" data-mode="payment">Make a payment</button>';
+      html += '<button class="btn" data-action="tx" data-mode="charge">Add a charge</button>';
       if (c.balance > 0.005){
-        html += '<button class="btn full" onclick="DT.openTxForm(\'payoff\')">Pay off in full</button>';
+        html += '<button class="btn full" data-action="tx" data-mode="payoff">Pay off in full</button>';
       }
-      html += '<button class="btn full" onclick="DT.closeCard()">Close card</button>';
+      html += '<button class="btn full" data-action="close-card">Close card</button>';
       html += '</div>';
     } else {
       html += '<div class="action-row">';
-      html += '<button class="btn full" onclick="DT.reopenCard()">Reopen card</button>';
+      html += '<button class="btn full" data-action="reopen-card">Reopen card</button>';
       html += '</div>';
     }
 
-    html += '<div class="action-row"><button class="btn danger full" onclick="DT.deleteCard()">Delete card</button></div>';
+    html += '<div class="action-row"><button class="btn danger full" data-action="delete-card">Delete card</button></div>';
 
     html += '<div class="section-heading">History</div>';
     var hist = c.history.slice().reverse();
@@ -580,8 +581,8 @@
     if (mode === 'payment'){
       quickChips =
         '<div class="quick-amounts">' +
-          (c.monthlyPayment ? '<button type="button" onclick="DT.setTxAmount(' + c.monthlyPayment + ')">Min payment (' + fmtMoney(c.monthlyPayment) + ')</button>' : '') +
-          '<button type="button" onclick="DT.setTxAmount(' + c.balance + ')">Full balance (' + fmtMoney(c.balance) + ')</button>' +
+          (c.monthlyPayment ? '<button type="button" data-action="set-amount" data-amount="' + c.monthlyPayment + '">Min payment (' + fmtMoney(c.monthlyPayment) + ')</button>' : '') +
+          '<button type="button" data-action="set-amount" data-amount="' + c.balance + '">Full balance (' + fmtMoney(c.balance) + ')</button>' +
         '</div>';
     }
 
@@ -728,9 +729,39 @@
     }
   }
 
+  // Shrinks the dashboard's main content to fit the space below the
+  // header (mirrors fitOverlayBody) so the home screen behaves like an
+  // app screen rather than a scrolling web page for the common case of
+  // a handful of cards. Falls back to a normal scroll, via #app's
+  // scroll-fallback class, only when even the minimum legible scale
+  // still doesn't fit everything, e.g. a long list of cards.
+  function fitMainToViewport(){
+    var app = document.getElementById('app');
+    var header = document.querySelector('.app-header');
+    var mainEl = document.querySelector('main');
+    if (!app || !header || !mainEl) return;
+
+    mainEl.style.transform = '';
+    app.classList.remove('scroll-fallback');
+
+    var headerH = header.getBoundingClientRect().height;
+    var available = window.innerHeight - headerH;
+    var contentH = mainEl.scrollHeight;
+
+    if (contentH > available && contentH > 0){
+      var scale = available / contentH;
+      if (scale < MIN_FIT_SCALE){
+        scale = MIN_FIT_SCALE;
+        app.classList.add('scroll-fallback');
+      }
+      mainEl.style.transform = 'scale(' + scale.toFixed(4) + ')';
+    }
+  }
+
   window.addEventListener('resize', function(){
     var openOverlay = document.querySelector('.overlay.show');
     if (openOverlay) fitOverlayBody(openOverlay.id);
+    fitMainToViewport();
   });
 
   /* ============================================================
@@ -807,16 +838,31 @@
   });
 
   /* ============================================================
-     Expose the handful of functions used via inline onclick=""
+     Delegated click handling for dynamically rendered content.
+     Tiles, action buttons and quick-amount chips are generated as
+     HTML strings and carry data-action attributes rather than inline
+     onclick handlers, both because CSP's script-src blocks inline
+     event handler attributes and because a single delegated listener
+     is simpler to maintain than re-binding after every re-render.
   ============================================================ */
-  window.DT = {
-    openCard: openCard,
-    openTxForm: openTxForm,
-    setTxAmount: setTxAmount,
-    closeCard: closeCard,
-    reopenCard: reopenCard,
-    deleteCard: deleteCard
-  };
+  document.addEventListener('click', function(e){
+    var el = e.target.closest('[data-action]');
+    if (!el) return;
+    var action = el.getAttribute('data-action');
+    if (action === 'open-card'){
+      openCard(el.getAttribute('data-id'));
+    } else if (action === 'tx'){
+      openTxForm(el.getAttribute('data-mode'));
+    } else if (action === 'set-amount'){
+      setTxAmount(parseFloat(el.getAttribute('data-amount')));
+    } else if (action === 'close-card'){
+      closeCard();
+    } else if (action === 'reopen-card'){
+      reopenCard();
+    } else if (action === 'delete-card'){
+      deleteCard();
+    }
+  });
 
   /* ============================================================
      Boot

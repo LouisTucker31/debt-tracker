@@ -31,28 +31,25 @@
     margin:0; padding:0; background:var(--bg) !important; color:var(--text);
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
     -webkit-font-smoothing:antialiased;
-    overscroll-behavior-y:none;
     touch-action:manipulation;
-    overflow-x:hidden;
+    overflow:hidden;
     width:100%;
+    height:100%;
   }
 
+  /* The whole app is pinned to the viewport, like a native app screen,
+     rather than relying on normal document scroll. main is shrunk to
+     fit whatever space is left below the header (see fitMainToViewport
+     in main.js); scroll-fallback is only added back in when content
+     still doesn't fit at a legible minimum size. */
   #app{
     background:var(--bg) !important;
-    min-height:100vh;
-    min-height:100dvh;
-    min-height:-webkit-fill-available;
+    position:fixed; inset:0;
+    overflow:hidden;
     display:flex;
     flex-direction:column;
   }
-
-  body{
-    min-height:100vh;
-    min-height:100dvh;
-    padding-bottom: calc(24px + var(--safe-bottom));
-  }
-
-  main{ min-height:calc(100vh - 160px); min-height:calc(100dvh - 160px); }
+  #app.scroll-fallback{ overflow-y:auto; -webkit-overflow-scrolling:touch; }
 
   h1,h2,h3,p{ margin:0; }
 
@@ -102,7 +99,7 @@
   .summary-chip .value.accent{ color:var(--accent); }
 
   /* ---------- Main / grid ---------- */
-  main{ padding:16px calc(16px + env(safe-area-inset-right, 0px)) 16px calc(16px + env(safe-area-inset-left, 0px)); max-width:760px; margin:0 auto; overflow-x:hidden; min-width:0; width:100%; flex:1 0 auto; }
+  main{ padding:16px calc(16px + env(safe-area-inset-right, 0px)) calc(16px + var(--safe-bottom)) calc(16px + env(safe-area-inset-left, 0px)); max-width:760px; margin:0 auto; overflow-x:hidden; min-width:0; width:100%; flex:1 0 auto; transform-origin:top center; }
 
   .grid{
     display:grid; grid-template-columns:repeat(auto-fill, minmax(160px,1fr)); gap:12px;
@@ -148,7 +145,8 @@
     display:flex; justify-content:space-between; align-items:center;
     padding:10px 12px; border:1px solid var(--border); border-radius:var(--radius-sm);
     margin-top:8px; font-size:13.5px; color:var(--text-dim); cursor:pointer;
-    min-height:44px; box-sizing:border-box;
+    min-height:44px; box-sizing:border-box; width:100%; background:var(--bg);
+    font-family:inherit; text-align:left;
   }
   .closed-row .cname{ color:var(--text); font-weight:500; }
 
@@ -240,13 +238,17 @@
     width:100%; font-size:16px; padding:12px 13px; border:1px solid var(--border);
     border-radius:var(--radius-sm); background:var(--surface); color:var(--text);
     font-family:inherit; box-sizing:border-box; min-width:0; max-width:100%; display:block;
+    -webkit-appearance:none; appearance:none;
   }
   .field input[type="date"]{
     width:100% !important; max-width:100% !important; box-sizing:border-box;
-    -webkit-appearance:none; appearance:none;
   }
-  .field input:focus, .field textarea:focus{ outline:2px solid var(--accent); outline-offset:1px; }
-  .field input:focus-visible, .field textarea:focus-visible{ outline:2px solid var(--accent); outline-offset:1px; }
+  .field input:focus, .field textarea:focus{
+    outline:2px solid var(--accent); outline-offset:1px; border-color:var(--accent);
+  }
+  .field input:focus-visible, .field textarea:focus-visible{
+    outline:2px solid var(--accent); outline-offset:1px; border-color:var(--accent);
+  }
   .field .hint{ font-size:12px; color:var(--text-faint); margin-top:5px; }
   .hint.hint-standalone{ margin-bottom:16px; }
   .field-row{ display:flex; gap:12px; }
