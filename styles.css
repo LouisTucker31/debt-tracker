@@ -280,6 +280,34 @@
     display:flex; align-items:center; justify-content:center; margin:-10px -10px -10px 0;
   }
 
+  /* ---------- Lock screen ---------- */
+  .lock-screen{
+    position:fixed; inset:0; z-index:1000; background:var(--bg);
+    display:flex; align-items:center; justify-content:center;
+    padding:24px calc(24px + env(safe-area-inset-right, 0px)) calc(24px + var(--safe-bottom)) calc(24px + env(safe-area-inset-left, 0px));
+  }
+  .lock-screen.unlocked{ display:none; }
+  .lock-card{ width:100%; max-width:340px; text-align:center; }
+  .lock-title{ font-size:22px; font-weight:700; letter-spacing:-0.01em; margin-bottom:6px; }
+  .lock-subtitle{ font-size:14px; color:var(--text-dim); margin-bottom:28px; }
+  .lock-label{ display:block; font-size:13px; font-weight:600; color:var(--text-dim); margin-bottom:6px; text-align:left; }
+  .lock-input{
+    width:100%; font-size:18px; letter-spacing:4px; text-align:center; padding:14px 13px;
+    border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--surface);
+    color:var(--text); font-family:inherit; box-sizing:border-box;
+    -webkit-appearance:none; appearance:none;
+  }
+  .lock-input:focus, .lock-input:focus-visible{
+    outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-dim);
+  }
+  .lock-error{ color:var(--danger); font-size:13px; margin-top:10px; text-align:left; }
+  .lock-card .btn{ margin-top:20px; }
+  .lock-shake{ animation:lock-shake 0.3s; }
+  @keyframes lock-shake{
+    25%{ transform:translateX(-6px); }
+    75%{ transform:translateX(6px); }
+  }
+
   /* ---------- Confirmation dialog ---------- */
   .confirm-dialog{
     border:none; border-radius:var(--radius); padding:22px; width:min(340px, calc(100vw - 48px));
@@ -300,5 +328,5 @@
   }
 
   @media (prefers-reduced-motion: reduce){
-    *{ transition:none !important; }
+    *{ transition:none !important; animation:none !important; }
   }

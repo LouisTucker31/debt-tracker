@@ -22,7 +22,21 @@
 </head>
 <body>
 
-<div id="app">
+<!-- Lock screen: a local access deterrent, not real security. The code
+     is a plain constant in js/main.js and is trivially readable via
+     browser dev tools; it only discourages a casual glance. -->
+<div class="lock-screen" id="lockScreen">
+  <div class="lock-card">
+    <h1 class="lock-title">Debt Tracker</h1>
+    <p class="lock-subtitle">Enter your code to continue</p>
+    <label for="lockCodeInput" class="lock-label">Access code</label>
+    <input id="lockCodeInput" class="lock-input" type="password" inputmode="numeric" autocomplete="off" enterkeyhint="done" aria-describedby="lockError">
+    <p class="lock-error" id="lockError" role="alert" hidden>Incorrect code. Try again.</p>
+    <button type="button" class="btn primary full" id="lockUnlockBtn" data-action="unlock">Unlock</button>
+  </div>
+</div>
+
+<div id="app" inert aria-hidden="true">
 
 <header class="app-header">
   <div class="header-top">

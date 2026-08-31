@@ -20,6 +20,12 @@
   var CURRENCY = 'GBP';
   var LOCALE = 'en-GB';
   var STORAGE_KEY = 'debtTracker.cards.v1';
+
+  // Local access code. This is a plain-text constant readable by
+  // anyone who opens dev tools, so it is a casual deterrent only, not
+  // real authentication. Change the string below to set your own code.
+  var ACCESS_CODE = '1945';
+  var UNLOCK_SESSION_KEY = 'debtTracker.unlocked';
   var currencyFmt = new Intl.NumberFormat(LOCALE, { style:'currency', currency:CURRENCY, minimumFractionDigits:2, maximumFractionDigits:2 });
   var currencyFmtNoDecimals = new Intl.NumberFormat(LOCALE, { style:'currency', currency:CURRENCY, minimumFractionDigits:0, maximumFractionDigits:0 });
 
@@ -861,8 +867,67 @@
       reopenCard();
     } else if (action === 'delete-card'){
       deleteCard();
+    } else if (action === 'unlock'){
+      attemptUnlock();
     }
   });
+
+  /* ============================================================
+     Lock screen
+     A local access deterrent (see the ACCESS_CODE comment above),
+     not real authentication. Unlocking is remembered for the current
+     browser session only, via sessionStorage, so the app re-locks the
+     next time it is opened after being closed.
+  ============================================================ */
+  var lockScreenEl = document.getElementById('lockScreen');
+  var lockCodeInput = document.getElementById('lockCodeInput');
+  var lockErrorEl = document.getElementById('lockError');
+  var appEl = document.getElementById('app');
+
+  function isUnlocked(){
+    try{
+      return sessionStorage.getItem(UNLOCK_SESSION_KEY) === '1';
+    }catch(e){
+      // Private browsing modes can throw on sessionStorage access;
+      // fail open rather than lock someone out with no way back in.
+      return true;
+    }
+  }
+
+  function showAppUnlocked(){
+    lockScreenEl.classList.add('unlocked');
+    appEl.removeAttribute('inert');
+    appEl.removeAttribute('aria-hidden');
+  }
+
+  function attemptUnlock(){
+    if (lockCodeInput.value === ACCESS_CODE){
+      try{ sessionStorage.setItem(UNLOCK_SESSION_KEY, '1'); }catch(e){ /* ignore */ }
+      lockCodeInput.value = '';
+      lockErrorEl.hidden = true;
+      showAppUnlocked();
+    }else{
+      lockErrorEl.hidden = false;
+      lockCodeInput.value = '';
+      lockCodeInput.focus();
+      var card = document.querySelector('.lock-card');
+      card.classList.remove('lock-shake');
+      // Force a reflow so the animation can be re-triggered on repeat
+      // wrong attempts, not just the first one.
+      void card.offsetWidth;
+      card.classList.add('lock-shake');
+    }
+  }
+
+  lockCodeInput.addEventListener('keydown', function(e){
+    if (e.key === 'Enter') attemptUnlock();
+  });
+
+  if (isUnlocked()){
+    showAppUnlocked();
+  } else {
+    lockCodeInput.focus();
+  }
 
   /* ============================================================
      Boot

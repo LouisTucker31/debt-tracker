@@ -77,6 +77,26 @@ var LOCALE = 'en-GB';
 
 Swap in your currency and locale, for example `'USD'` and `'en-US'`.
 
+## Lock screen
+
+The app shows a code entry screen on launch. To set your code, open
+`js/main.js` and find:
+
+```js
+var ACCESS_CODE = 'CHANGE-ME';
+```
+
+Replace `'CHANGE-ME'` with whatever you want, in quotes. Unlocking lasts
+until you close the app or browser tab; reopening it asks again.
+
+This is a local deterrent against a casual glance at your phone, not
+real security. The code sits in plain text in a file anyone can open
+in a browser's dev tools, and the underlying balance data in local
+storage is never encrypted regardless of the lock screen. If you ever
+need this to actually be secure against someone with access to the
+device, that needs real authentication with a backend, which a static
+site like this one cannot provide.
+
 ## Notes on this build
 
 - **Data storage.** All data lives in that one browser's storage.
